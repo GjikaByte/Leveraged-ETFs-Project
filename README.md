@@ -7,9 +7,13 @@ This project models the performance of **Leveraged Exchange-Traded Funds (LETFs)
 ## Dataset Overview
 
 The dataset used in this project consists of historical price data for leveraged ETFs:
+
+
 - **Data Files**:
   - `dailyPrices.csv`: Contains daily price data for selected ETFs.
   - `weeklyPrices.csv`: Contains aggregated weekly prices for trend analysis.
+
+
 - **Data Processing**: The raw data has been cleaned and preprocessed to ensure compatibility for the stochastic model.
 
 ---
@@ -18,38 +22,56 @@ The dataset used in this project consists of historical price data for leveraged
 
 This study utilizes a **stochastic differential equation (SDE)** framework to model the behavior of leveraged ETFs under varying market conditions. The approach leverages **Geometric Brownian Motion (GBM)** to capture the price dynamics of the underlying index and incorporates leverage factors to simulate the effects on ETF performance.
 
-### 1. Stochastic Modeling
+### 1. Stochastic Modeling with Poisson Jumps
 
-We use a **Geometric Brownian Motion (GBM)** model to simulate the price dynamics of the underlying index (e.g., DAX). The model is represented as follows:
+The price dynamics of an asset (e.g., an index) with jumps are modeled by a **Jump-Diffusion Process**, which is an extension of the **Geometric Brownian Motion (GBM)** model. The dynamics of the asset price are given by the following stochastic differential equation (SDE):
 
 $$
-dS_t = \mu S_t \, dt + \sigma S_t \, dW_t
+dS_t = \mu S_t \, dt + \sigma S_t \, dW_t + J_t S_t \, dN_t
 $$
 
 Where:
-- $\( S_t \)$ is the price of the underlying index.
+- $\( S_t \)$ is the price of the asset at time $\( t \)$.
 - $\( \mu \)$ is the drift term (expected return).
-- $\( \sigma \)$ is the volatility.
-- $\( W_t \)$ is a Wiener process, representing random market fluctuations.
+- $\( \sigma \)$ is the volatility (standard deviation).
+- $\( dW_t \)$ is the increment of a Wiener process (representing random continuous fluctuations).
+- $\( J_t \)$ is the jump size at time $\( t \)$, modeled as a random variable, typically following a normal or log-normal distribution.
+- $\( N_t \)$ is a **Poisson process**, which models the occurrence of jumps. The Poisson process has a rate $\( \lambda \)$, representing the average number of jumps per unit time.
+- $\( dN_t \)$ is the increment of the Poisson process, which equals 1 if a jump occurs and 0 otherwise.
 
-#### Leveraged ETFs Simulation:
-For LETFs, the model is adjusted to account for leverage multipliers, where the return dynamics are given by:
+This model accounts for both continuous fluctuations in the price (via Brownian motion) and sudden jumps that occur randomly over time (via the Poisson process).
+
+### 2. Poisson Jumps
+
+The **Poisson process** $\( N_t \)$ is defined such that:
+- The number of jumps in a small time interval $\( dt \)$ follows a **Poisson distribution** with mean $\( \lambda dt \)$, where $\( \lambda \)$ is the **jump intensity** (the expected number of jumps per unit time).
+- The jumps are independent and occur randomly in time, with sizes modeled by a specified distribution (e.g., normal or log-normal).
+  
+This approach captures the randomness of sudden market shocks and their impact on asset prices.
+
+### 3. Leveraged ETFs with Jumps
+
+For **Leveraged ETFs**, we extend the jump-diffusion model to account for leverage. The price dynamics of a leveraged ETF under this model are described by:
 
 $$
-dL_t = L_t (\mu dt + \sigma dW_t)
+dL_t = L_t (\mu dt + \sigma dW_t + J_t dN_t)
 $$
 
 Where:
-- $\( L_t \)$ represents the leveraged ETF price at time \( t \).
-- $\( \mu \)$ and $\( \sigma \)$ are the drift and volatility of the underlying index.
-- Leverage (e.g., 2x or 3x) is incorporated to scale the price dynamics of the ETF.
+- $\( L_t \)$ is the price of the leveraged ETF at time $\( t \)$,
+- $\( \mu \)$, $\( \sigma \)$, and $\( dW_t \)$ are the drift, volatility, and Brownian motion increments as previously defined,
+- $\( J_t \)$ is the jump size,
+- $\( N_t \)$ is the Poisson process representing the jumps.
 
-### 2. Numerical Solutions
-We solved these SDEs using **Monte Carlo simulations** and MATLAB’s numerical solvers, running simulations over thousands of paths to estimate the ETF's performance under various market conditions. This approach allows us to capture the randomness in the price evolution and analyze different leverage factors.
+This model incorporates the impact of leverage on both the continuous price movements and sudden price jumps, which results in an amplified response in the leveraged ETF.
 
-### 3. Data Processing and Validation
-- The raw data from `dailyPrices.csv` and `weeklyPrices.csv` was processed and transformed to match the required input format for the stochastic model.
-- Simulated results were validated against real-world historical performance to check the accuracy of the model.
+### 4. Numerical Solutions for Leveraged ETFs with Jumps
+
+To solve this system numerically, we use **Monte Carlo simulations** to simulate multiple paths of the leveraged ETF price over time. For each path:
+- The asset price is updated based on the SDE, including both the continuous fluctuations and discrete jumps.
+- The price trajectories are generated by simulating both the Wiener process and the Poisson process, capturing the randomness and jumps at each time step.
+
+By running these simulations over thousands of paths, we estimate the expected performance of the leveraged ETFs and analyze the impact of leverage and jumps on the return distributions and risk metrics.
 
 ---
 
@@ -58,28 +80,33 @@ We solved these SDEs using **Monte Carlo simulations** and MATLAB’s numerical 
 The model's performance was evaluated using the following key metrics:
 
 ### 1. Return Deviation
-- We calculated the return deviation as the difference between the actual ETF return and the expected return based on the modeled leverage factor.
-- The Monte Carlo simulation was run for 5,000 iterations over multiple time horizons (weekly, monthly, yearly) to assess how leverage and time impact return deviations.
+- We calculate the return deviation as the difference between the actual ETF return and the expected return based on the modeled leverage factor.
+- Monte Carlo simulations were run for 5,000 iterations over various time horizons (weekly, monthly, yearly) to assess the impact of leverage and time on return deviations.
 
 ### 2. Risk Assessment
-- **Volatility**: The standard deviation of return deviations was analyzed to assess risk.
-- **Drawdown Analysis**: We calculated the maximum drawdown across different market conditions (bull vs bear markets).
-  
+- **Volatility**: The standard deviation of return deviations is calculated to assess the risk associated with the leveraged ETFs.
+- **Drawdown Analysis**: We compute the maximum drawdown over different market conditions to understand the risks associated with large losses during market downturns.
+
 ### 3. Simulation Results
 
-The simulation results demonstrated that higher leverage amplifies the returns during favorable market conditions, but also increases the downside risk significantly during volatile or unfavorable markets.
+The simulation results demonstrate that higher leverage amplifies the returns during favorable market conditions but also increases the downside risk significantly during market downturns.
 
 ---
 
 ## Key Visualizations
 
 - **Leverage Impact on Return Distributions**:
-  ![Leverage Impact](figures/leverage_impact.png)
+
+![Leverage Impact](figures/Picture%201.png)
 
 - **Simulated Paths of Leveraged ETFs**:
-  ![Simulated ETF Paths](figures/simulated_paths.png)
+
+![Simulated ETF Paths](figures/Picture%202.png)  ![Simulated ETF Paths](figures/Picture%205.png)
+
+![Simulated ETF Paths](figures/Picture%204.png)  ![Simulated ETF Paths](figures/Picture%207.png)
 
 - **Risk Analysis (Standard Deviation of Return Deviations)**:
-  ![Risk Analysis](figures/risk_analysis.png)
+  
+![Risk Analysis](figures/Picture%208.png)
 
 ---
